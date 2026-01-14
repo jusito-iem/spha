@@ -35,26 +35,26 @@ jobs:
       - name: Package distribution
         run: ./gradlew distZip
 
-      - name: Publish to Maven Central
-        env:
-          SPHA_LIB_VERSION: ${{ env.SPHA_LIB_VERSION }}
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USER }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_PW }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PRIVATE_KEY_PASSPHRASE }}
-        run: ./gradlew :lib:core:publishToMavenCentral :lib:adapter:publishToMavenCentral :lib:model:publishToMavenCentral --no-configuration-cache
+      # - name: Publish to Maven Central
+      #   env:
+      #     SPHA_LIB_VERSION: ${{ env.SPHA_LIB_VERSION }}
+      #     ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USER }}
+      #     ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_PW }}
+      #     ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_PRIVATE_KEY }}
+      #     ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PRIVATE_KEY_PASSPHRASE }}
+      #   run: ./gradlew :lib:core:publishToMavenCentral :lib:adapter:publishToMavenCentral :lib:model:publishToMavenCentral --no-configuration-cache
 
       # TODO: Changelog shouldn't contain UI / cli changes
       - name: Generate Release Notes
         run: |
           prev_tag=$(git tag --sort=-v:refname | awk -v t="$SPHA_LIB_VERSION" '$0 ==t {seen = 1; next }; seen { print; exit }')
-          git log --pretty=oneline $prev_tag..HEAD -- lib
+          git log --pretty=oneline $prev_tag..HEAD -- lib > RELEASE_NOTES.Example.md
           # Make clean RELEASE_NOTES
-          #./gradlew -q printChangeLog > RELEASE_NOTES.md
+          ./gradlew -q printChangeLog > RELEASE_NOTES.md
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # TODO: suggestion to release lib-VERSION and cli-VERSION later on
         run: |
-          gh release create $SPHA_LIB_VERSION --notes-file RELEASE_NOTES.md build/distributions/*.zip 
+          gh release create $SPHA_LIB_VERSION --notes-file RELEASE_NOTES.md RELEASE_NOTES.Example.md build/distributions/*.zip 
