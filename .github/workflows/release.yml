@@ -1,20 +1,22 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "[0-9]+.[0-9]+.[0-9]+"
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Git tag to release from"
+      SPHA_LIB_VERSION:
+        description: "LIB version and tag"
+        required: true
+        type: string
+      SPHA_CLI_VERSION:
+        description: "CLI version"
         required: true
         type: string
 
 jobs:
   publish-lib:
     env:
-      SPHA_LIB_VERSION: ${{ inputs.tag || github.ref_name }}
+      SPHA_LIB_VERSION: ${{ inputs.SPHA_LIB_VERSION }}
+      SPHA_CLI_VERSION: ${{ inputs.SPHA_CLI_VERSION }}
     permissions:
       contents: write
     runs-on: ubuntu-24.04
@@ -32,10 +34,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2
 
-      - name: Package distribution
-        run: ./gradlew distZip
-
-      # - name: Publish to Maven Central
+      # - name: Publish lib to Maven Central
       #   env:
       #     SPHA_LIB_VERSION: ${{ env.SPHA_LIB_VERSION }}
       #     ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USER }}
@@ -44,17 +43,17 @@ jobs:
       #     ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PRIVATE_KEY_PASSPHRASE }}
       #   run: ./gradlew :lib:core:publishToMavenCentral :lib:adapter:publishToMavenCentral :lib:model:publishToMavenCentral --no-configuration-cache
 
-      # TODO: Changelog shouldn't contain UI / cli changes
-      - name: Generate Release Notes
+      - name: Package cli distribution
+        env:
+          SPHA_CLI_VERSION: ${{ env.SPHA_CLI_VERSION }}
         run: |
-          prev_tag=$(git tag --sort=-v:refname | awk -v t="$SPHA_LIB_VERSION" '$0 ==t {seen = 1; next }; seen { print; exit }')
-          git log --pretty=oneline $prev_tag..HEAD -- lib > RELEASE_NOTES.Example.md
-          # Make clean RELEASE_NOTES
-          ./gradlew -q printChangeLog > RELEASE_NOTES.md
+          ./gradlew distZip
+          mkdir -p release
+          cp cli/build/distributions/*.zip release
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # TODO: suggestion to release lib-VERSION and cli-VERSION later on
+          TAG: ${{ env.SPHA_LIB_VERSION}}
         run: |
-          gh release create $SPHA_LIB_VERSION --notes-file RELEASE_NOTES.md RELEASE_NOTES.Example.md build/distributions/*.zip 
+          gh release create "$TAG" --notes-file RELEASE_NOTES.md RELEASE_NOTES.Example.md release/*
