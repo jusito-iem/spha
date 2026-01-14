@@ -56,4 +56,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ env.SPHA_LIB_VERSION}}
         run: |
-          gh release create "$TAG" --notes-file RELEASE_NOTES.md release/*
+          gh release create "$TAG" --generate-notes release/*
